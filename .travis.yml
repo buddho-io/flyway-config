@@ -1,0 +1,26 @@
+language: scala
+scala:
+- 2.11.7
+jdk:
+- oraclejdk8
+script:
+- sbt scalastyle test
+after_success:
+# if this isn't a PR build then publish the artifacts
+- '[ "${TRAVIS_PULL_REQUEST}" = "false" ] && sbt publish || true'
+cache:
+  directories:
+  - $HOME/.m2
+  - $HOME/.ivy2
+notifications:
+  email:
+  - llinder@gmail.com
+before_install:
+- '[ "${TRAVIS_PULL_REQUEST}" = "false" ] && sh "${TRAVIS_BUILD_DIR}/travis-ci-bintray-credentials.sh" || true'
+env:
+  global:
+  # BINTRAY_USERNAME
+  # BINTRAY_API_KEY
+  - secure: PIm90xwPuWdKuxTUe41FkelWvgf9TzrK4Ee6DrszUxE1IUNEat0FMAasBX1Z76cXXQ/xk816G6McQAe5WSMfOt/vYrwxRvGHpM6Uoy2Zl992CA4+4arD/BmIa82Z8DNlV2NbrJibYx02nM1mjJ9LkJ7TQx+yb5BbMxKJ18NAnB/f60QixrBLG34bpG6RXb4Ms45YqLODlKJSEHR3zCvvGbXYOftRS68EjlxkdQV7ofTb/XYfpdUUBr1qO/hvgatoHPVxljy1CwqsmxnixHoGIbmxMKwSTJZ6jgAoCr+/tOxzl1NbWGuNCLcdO3zoopYlfd5trLgfoqZnehrr4ptXZDfy3nVdY2LToZAKHmOxD3JqmBlI0ORYMDeGK/d0ZUC6/8D5JOvcgIrXJzPozlEnlO1RIRD86x5jjx1vniV4fq6pOmcodq1HTc+JAYgTJscxvFH3qTdojcv89y31yiGucszRfO6CLrrbu8buqjVCQG8nkjYvvARUlviFDGoIHM2vfpFbx9scdPHKansh8DgNNaUfObm4OErU5Usos847d25bCoW2F2tyhXg/7tknEfBlW/qGxf+l6I2noM7R7FHkcM/VbaINgQ4ZAy9tcCfG2jLZNd9w9P9E32ceqp+9kfVidBXsn7KlW5dI4ppIP8XsXAePZppyvcMft+wU/jkizIQ=
+  - secure: Y/tl2L/ZHIRErk+7gXTJiDmX2xz8HNWHIdDTZaXiXOpbJeb2TjKq9QW7m4FLGZrDMdYH3W5poTycLO2foJKuuZc7Rxv38B6kpVv+X06YzTrBmRQjYTf1bmwZukO1WvpIJtf+t+ThOPpuuTAWKLH3ck7/StIVY6v+jmseYvZerauz5aX1DYWCdrtvRh5il6bh4qldMwzyCuZjvqo8yIMuoHeFzMBQ0CtBBgEp7HrdSgPAPY4LobisvqRNvqhGLGeBM/S1FVNmbPNKp0784ka4PAyEcQi5SwJ5z8ZB9cc3iUBepQkbK2bCftOGlB6kWw3nGFklZ1bp18c+INGzROvYZloKA0yAFUn7JqdezrmIoEBsZ+bz2ny0X6X17NW43tluoTAT4Z2+59ppumz4QAgTHKgkHsIMpvrkebNcobT/oF9WpMdwR1yFQSaAJsnfRVfN3KHXWjmV9wcXSLgofYxnBKH+stDp6lgizi/NR9CqQ19gcv73Bt2ilIoVv0SBCJWvvdwV9nLwN1tzGMwQGIXehopuhoOVRdqMnLHtDGArodGLHzrIyyykJGrtAUVcLyqyGDSsLtsYpTZk7bxjRZKzd5jwj55M/Wdtw0h93TgB4gxRyXbgMWm9Kw+xN7qEvlbZf/4bgR1BJYYx71cxVBUVLM7GWSciDKo9isM7ZlTnXhQ=
+

@@ -1,3 +1,19 @@
+// Copyright (C) 2011-2012 the original author or authors.
+// See the LICENCE.txt file distributed with this work for additional
+// information regarding copyright ownership.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package io.buddho.flyway
 
 import java.util
@@ -46,7 +62,7 @@ case class FlywayConfig(migrations: Seq[MigrationConfig])
 
 
 object Keys {
-  object flyway {
+  object Flyway {
     val Enabled = "flyway.enabled"
     val Locations = "flyway.locations"
     val PlaceholderPrefix = "flyway.placeholderPrefix"
@@ -70,8 +86,8 @@ object Keys {
     val Placeholders = "flyway.placeholders"
 
 
-    object migration {
-      object database {
+    object Migration {
+      object Database {
         val Driver = "%s.driver"
         val Url = "%s.url"
         val User = "%s.user"
@@ -97,8 +113,8 @@ object FlywayConfig {
     config.map {
       case (name, value) =>
         val v = value.atPath(name)
-        import flyway._
-        import migration._
+        import Flyway._
+        import Migration._
 
         def get[T](path: String, primary: String => T, default: String => T): T = {
           if (v.hasPath(s"$name.$path")) primary(s"$name.$path") else default(path)
@@ -107,10 +123,10 @@ object FlywayConfig {
         MigrationConfig(
           name = name,
           database = DatabaseConfig(
-            driver = v.getString(database.Driver.format(name)),
-            url = v.getString(database.Url.format(name)),
-            user = if (v.hasPath(database.User.format(name))) Some(v.getString(database.User.format(name))) else None,
-            password = if (v.hasPath(database.Password.format(name))) Some(v.getString(database.Password.format(name))) else None
+            driver = v.getString(Database.Driver.format(name)),
+            url = v.getString(Database.Url.format(name)),
+            user = if (v.hasPath(Database.User.format(name))) Some(v.getString(Database.User.format(name))) else None,
+            password = if (v.hasPath(Database.Password.format(name))) Some(v.getString(Database.Password.format(name))) else None
           ),
           enabled = get(Enabled, v.getBoolean, f.getBoolean),
           locations = (get(Locations, v.getStringList, f.getStringList).toList match {
@@ -139,9 +155,4 @@ object FlywayConfig {
         )
     }.toSeq.sortBy(_.name)
   }
-
-
-
-
-
 }

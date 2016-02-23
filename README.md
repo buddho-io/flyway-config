@@ -1,5 +1,7 @@
 # Flyway Config
 
+[![Build Status](https://travis-ci.org/buddho-io/flyway-config.svg?branch=master)](https://travis-ci.org/buddho-io/flyway-config)
+
 Typesafe configuration parsing for Flyway
 
 Follows same configuration model as ScalikeJDBC for easier integration

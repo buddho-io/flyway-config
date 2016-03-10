@@ -17,66 +17,144 @@
 package io.buddho.flyway
 
 import java.sql.Connection
+import java.util.concurrent.ConcurrentHashMap
+import javax.sql.DataSource
 
 import com.typesafe.scalalogging.StrictLogging
 import org.flywaydb.core.api.MigrationInfo
 import org.flywaydb.core.api.callback.FlywayCallback
 import org.flywaydb.core.{Flyway => FlywayCore}
 
-import scala.concurrent.duration.FiniteDuration
-import scala.concurrent.{Await, Future, ExecutionContext}
-import scala.util.{Success, Failure, Try}
 import scala.collection.JavaConversions._
+import scala.concurrent.duration.{FiniteDuration, _}
+import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.util.Try
 
-import scala.concurrent.duration._
 
-class Flyway(config: FlywayConfig, implicit val ec: ExecutionContext) extends StrictLogging {
+class Flyway(config: FlywayConfig)(implicit ec: ExecutionContext) extends StrictLogging {
 
-  def migrate(throwOnFailure: Boolean = false, timeout: FiniteDuration = 60.seconds): Seq[Try[Int]] =
-    awaitOrFail(throwOnFailure, timeout, migrateAsync)
+  private val pool = new ConcurrentHashMap[Symbol, Option[FlywayCore]]()
 
-  def migrateAsync(): Future[Seq[Try[Int]]] = {
-    Future.sequence {
-      config.migrations.map(m => Future(Try(flyway(m).migrate())))
+  def getDataSource(name: Symbol): Option[DataSource] = pool.getOrElseUpdate(name, flyway(name)).map(_.getDataSource)
+
+  // ------------------
+
+  def migrate(name: Symbol): Option[Try[Int]] = migrate(name, 60.seconds)
+
+  def migrate(name: Symbol, dataSource: DataSource): Option[Try[Int]] = migrate(name, dataSource, 60.seconds)
+
+  def migrate(name: Symbol, dataSource: DataSource, timeout: FiniteDuration): Option[Try[Int]] =
+    migrateAsync(name, dataSource) match {
+      case Some(f) => Some(Await.result(f, timeout))
+      case None => None
     }
-  }
 
-  def validate(throwOnFailure: Boolean = false, timeout: FiniteDuration = 60.seconds): Seq[Try[Unit]] =
-    awaitOrFail(throwOnFailure, timeout, validateAsync)
-
-  def validateAsync(): Future[Seq[Try[Unit]]] = {
-    Future.sequence {
-      config.migrations.map(m => Future(Try(flyway(m).validate())))
+  def migrate(name: Symbol, timeout: FiniteDuration): Option[Try[Int]] =
+    migrateAsync(name) match {
+      case Some(f) => Some(Await.result(f, timeout))
+      case None => None
     }
-  }
 
-  def clean(throwOnFailure: Boolean = false, timeout: FiniteDuration = 60.seconds): Seq[Try[Unit]] =
-    awaitOrFail(throwOnFailure, timeout, cleanAsync)
+  def migrateAll(timeout: FiniteDuration = 60.seconds): Seq[Try[Int]] =
+    Await.result(Future.sequence(migrateAllAsync()), timeout)
 
-  def cleanAsync(): Future[Seq[Try[Unit]]] = {
-    Future.sequence {
-      config.migrations.map(m => Future(Try(flyway(m).clean())))
+  def migrateAsync(name: Symbol): Option[Future[Try[Int]]] =
+    flyway(name).map(f => Future(Try(f.migrate())))
+
+  def migrateAsync(name: Symbol, dataSource: DataSource): Option[Future[Try[Int]]] =
+    flyway(name, dataSource).map(f => Future(Try(f.migrate())))
+
+  def migrateAllAsync(): Seq[Future[Try[Int]]] =
+    config.migrations.map(m => Future(Try(flyway(m.name).get.migrate())))
+
+  // ------------------
+
+
+  def validate(name: Symbol): Option[Try[Unit]] = validate(name, 60.seconds)
+
+  def validate(name: Symbol, dataSource: DataSource): Option[Try[Unit]] = validate(name, dataSource, 60.seconds)
+
+  def validate(name: Symbol, dataSource: DataSource, timeout: FiniteDuration): Option[Try[Unit]] =
+    validateAsync(name, dataSource) match {
+      case Some(f) => Some(Await.result(f, timeout))
+      case None => None
     }
-  }
 
-  def repair(throwOnFailure: Boolean = false, timeout: FiniteDuration = 60.seconds): Seq[Try[Unit]] =
-    awaitOrFail(throwOnFailure, timeout, repairAsync)
-
-  def repairAsync(): Future[Seq[Try[Unit]]] = {
-    val results = config.migrations.map(m => Future(Try(flyway(m).repair())))
-    Future.sequence(results.toList)
-  }
-
-  private def awaitOrFail[T](throwOnFailure: Boolean = false, timeout: FiniteDuration, f: () => Future[Seq[Try[T]]]): Seq[Try[T]] = {
-    val results = Await.result(f(), timeout)
-    if (throwOnFailure) {
-      results.toList.filter(_.isFailure) match {
-        case Failure(e) :: _ => throw e
-        case _ =>
-      }
+  def validate(name: Symbol, timeout: FiniteDuration): Option[Try[Unit]] =
+    validateAsync(name) match {
+      case Some(f) => Some(Await.result(f, timeout))
+      case _ => None
     }
-    results
-  }
+
+  def validateAll(timeout: FiniteDuration = 60.seconds): Seq[Try[Unit]] =
+    Await.result(Future.sequence(validateAllAsync()), timeout)
+
+  def validateAsync(name: Symbol): Option[Future[Try[Unit]]] =
+    flyway(name).map(f => Future(Try(f.validate())))
+
+  def validateAsync(name: Symbol, dataSource: DataSource): Option[Future[Try[Unit]]] =
+    flyway(name, dataSource).map(f => Future(Try(f.validate())))
+
+  def validateAllAsync(): Seq[Future[Try[Unit]]] =
+    config.migrations.map(m => Future(Try(flyway(m.name).get.validate())))
+
+  // ------------------
+
+  def clean(name: Symbol): Option[Try[Unit]] = clean(name, 60.seconds)
+
+  def clean(name: Symbol, dataSource: DataSource): Option[Try[Unit]] = clean(name, dataSource, 60.seconds)
+
+  def clean(name: Symbol, dataSource: DataSource, timeout: FiniteDuration): Option[Try[Unit]] =
+    cleanAsync(name, dataSource) match {
+      case Some(f) => Some(Await.result(f, timeout))
+      case None => None
+    }
+
+  def clean(name: Symbol, timeout: FiniteDuration): Option[Try[Unit]] =
+    cleanAsync(name) match {
+      case Some(f) => Some(Await.result(f, timeout))
+      case None => None
+    }
+
+  def cleanAll(throwOnFailure: Boolean = false, timeout: FiniteDuration = 60.seconds): Seq[Try[Unit]] =
+    Await.result(Future.sequence(cleanAllAsync()), timeout)
+
+  def cleanAsync(name: Symbol): Option[Future[Try[Unit]]] =
+    flyway(name).map(f => Future(Try(f.clean())))
+
+  def cleanAsync(name: Symbol, dataSource: DataSource): Option[Future[Try[Unit]]] =
+    flyway(name, dataSource).map(f => Future(Try(f.clean())))
+
+  def cleanAllAsync(): Seq[Future[Try[Unit]]] =
+    config.migrations.map(m => Future(Try(flyway(m.name).get.clean())))
+
+  // ------------------
+
+  def repair(name: Symbol, throwOnFailure: Boolean = false, timeout: FiniteDuration = 60.seconds): Option[Try[Unit]] =
+    repairAsync(name) match {
+      case Some(f) => Some(Await.result(f, timeout))
+      case None => None
+    }
+
+  def repairAll(throwOnFailure: Boolean = false, timeout: FiniteDuration = 60.seconds): Seq[Try[Unit]] =
+    Await.result(Future.sequence(repairAllAsync()), timeout)
+
+  def repairAsync(name: Symbol): Option[Future[Try[Unit]]] =
+    flyway(name).map(f => Future(Try(f.repair())))
+
+  def repairAllAsync(): Seq[Future[Try[Unit]]] =
+    config.migrations.map(m => Future(Try(flyway(m.name).get.repair())))
+
+  private def flyway(name: Symbol, dataSource: DataSource): Option[FlywayCore] =
+    pool.getOrElseUpdate(name, config.migrations.find(_.name == name).map { m =>
+      val f = flyway(m)
+      f.setDataSource(dataSource)
+      f
+    })
+
+  private def flyway(name: Symbol): Option[FlywayCore] =
+    pool.getOrElseUpdate(name, config.migrations.find(_.name == name).map(m => flyway(m)))
+
 
   private def flyway(m: MigrationConfig): FlywayCore = {
     val f = new FlywayCore()

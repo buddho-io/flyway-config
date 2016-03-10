@@ -60,7 +60,7 @@ class FlywayConfigSpec extends FlatSpec with Matchers {
 
     val m1 = config.migrations.head
 
-    m1.name should be ("default")
+    m1.name should equal ('default)
     m1.enabled should be (true)
     m1.locations should be (Seq("db/migration/default"))
     m1.database should be (DatabaseConfig(
@@ -71,7 +71,7 @@ class FlywayConfigSpec extends FlatSpec with Matchers {
 
     val m2 = config.migrations(1)
 
-    m2.name should be ("legacy")
+    m2.name should equal ('legacy)
     m2.locations should be (Seq("db/migration/legacy"))
     m2.database should be (DatabaseConfig(
       "org.postgresql.Driver",
@@ -119,7 +119,7 @@ class FlywayConfigSpec extends FlatSpec with Matchers {
 
     val m = config.migrations.head
 
-    m.name should be ("default")
+    m.name should equal ('default)
     m.enabled should be (true)
     m.locations should be (List("db/migration/test"))
     m.database should be (DatabaseConfig(

@@ -32,7 +32,7 @@ case class DatabaseConfig(
                            password: Option[String])
 
 case class MigrationConfig(
-                            name: String,
+                            name: Symbol,
                             database: DatabaseConfig,
                             enabled: Boolean,
 
@@ -121,7 +121,7 @@ object FlywayConfig {
         }
 
         MigrationConfig(
-          name = name,
+          name = Symbol(name),
           database = DatabaseConfig(
             driver = v.getString(Database.Driver.format(name)),
             url = v.getString(Database.Url.format(name)),
@@ -129,10 +129,10 @@ object FlywayConfig {
             password = if (v.hasPath(Database.Password.format(name))) Some(v.getString(Database.Password.format(name))) else None
           ),
           enabled = get(Enabled, v.getBoolean, f.getBoolean),
-          locations = (get(Locations, v.getStringList, f.getStringList).toList match {
+          locations = get(Locations, v.getStringList, f.getStringList).toList match {
             case Nil => List(s"db/migration/$name")
             case x: List[String] => x
-          }).toSeq,
+          },
           placeholderPrefix = get(PlaceholderPrefix, v.getString, f.getString),
           placeholderSuffix = get(PlaceholderSuffix, v.getString, f.getString),
           sqlMigrationPrefix = get(SqlMigrationPrefix, v.getString, f.getString),
@@ -153,6 +153,6 @@ object FlywayConfig {
           callbacks = get(Callbacks, v.getStringList, f.getStringList),
           placeholders = get(Placeholders, v.getObject, f.getObject).mapValues(_.unwrapped().asInstanceOf[String]).toMap
         )
-    }.toSeq.sortBy(_.name)
+    }.toSeq
   }
 }

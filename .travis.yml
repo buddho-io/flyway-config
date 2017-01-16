@@ -1,13 +1,13 @@
 language: scala
 scala:
-- 2.11.7
+- 2.11.8
 jdk:
 - oraclejdk8
 script:
 - sbt scalastyle test
 after_success:
 # if this isn't a PR build then publish the artifacts
-- '[ "${TRAVIS_PULL_REQUEST}" = "false" ] && sbt publish || true'
+- '[ "${TRAVIS_PULL_REQUEST}" = "false" ] && sbt +publish || true'
 cache:
   directories:
   - $HOME/.m2

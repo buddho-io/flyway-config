@@ -158,28 +158,41 @@ class Flyway(config: FlywayConfig)(implicit ec: ExecutionContext) extends Strict
 
   private def flyway(m: MigrationConfig): FlywayCore = {
     val f = new FlywayCore()
-    f.setLocations(m.locations: _*)
-    f.setPlaceholderPrefix(m.placeholderPrefix)
-    f.setPlaceholderSuffix(m.placeholderSuffix)
-    f.setSqlMigrationPrefix(m.sqlMigrationPrefix)
-    f.setSqlMigrationSeparator(m.sqlMigrationSeparator)
-    f.setSqlMigrationSuffix(m.sqlMigrationSuffix)
-    f.setEncoding(m.encoding)
-    f.setSchemas(m.schemas: _*)
-    f.setTable(m.table)
-    f.setCleanOnValidationError(m.cleanOnValidationError)
-    f.setValidateOnMigrate(m.validateOnMigrate)
-    f.setBaselineVersion(m.baselineVersion)
     f.setBaselineDescription(m.baselineDescription)
     f.setBaselineOnMigrate(m.baselineOnMigrate)
-    f.setIgnoreFailedFutureMigration(m.ignoreFailedFutureMigration)
-    f.setTarget(m.target)
+    f.setBaselineVersion(m.baselineVersion)
+    f.setCallbacks(new LoggingCallback :: f.getCallbacks.toList: _*)
+    f.setCleanDisabled(m.cleanDisabled)
+    f.setCleanOnValidationError(m.cleanOnValidationError)
+    f.setDataSource(m.database.url, m.database.user.orNull, m.database.password.orNull)
+
+    f.setEncoding(m.encoding)
+    f.setGroup(m.group)
+    f.setIgnoreFutureMigrations(m.ignoreFutureMigrations)
+    f.setIgnoreMissingMigrations(m.ignoreMissingMigrations)
+    f.setInstalledBy(m.installedBy)
+    f.setLocations(m.locations: _*)
+    f.setMixed(m.mixed)
     f.setOutOfOrder(m.outOfOrder)
+    f.setPlaceholderPrefix(m.placeholderPrefix)
+    f.setPlaceholderReplacement(m.placeholderReplacement)
+    f.setPlaceholders(m.placeholders)
+    f.setPlaceholderSuffix(m.placeholderSuffix)
+    f.setRepeatableSqlMigrationPrefix(m.repeatableSqlMigrationPrefix)
+    f.setSchemas(m.schemas: _*)
+    f.setSkipDefaultCallbacks(m.skipDefaultCallbacks)
+    f.setSkipDefaultResolvers(m.skipDefaultResolvers)
+    f.setSqlMigrationPrefix(m.sqlMigrationPrefix)
+    f.setSqlMigrationSeparator(m.sqlMigrationSeparator)
+    f.setSqlMigrationSuffixes(m.sqlMigrationSuffixes: _*)
+    f.setTable(m.table)
+    f.setTarget(m.target)
+    f.setValidateOnMigrate(m.validateOnMigrate)
+
     f.setResolversAsClassNames(m.resolvers: _*)
     f.setCallbacksAsClassNames(m.callbacks: _*)
-    f.setPlaceholders(m.placeholders)
-    f.setCallbacks(new LoggingCallback :: f.getCallbacks.toList: _*)
-    f.setDataSource(m.database.url, m.database.user.orNull, m.database.password.orNull)
+
+
     f
   }
 
@@ -187,17 +200,11 @@ class Flyway(config: FlywayConfig)(implicit ec: ExecutionContext) extends Strict
     override def afterInfo(connection: Connection): Unit =
       logger.info(s"${connection.getCatalog} > info task starting")
 
-    override def beforeInit(connection: Connection): Unit =
-      logger.info(s"${connection.getCatalog} > init task starting")
-
     override def beforeBaseline(connection: Connection): Unit =
       logger.info(s"${connection.getCatalog} > baseline task starting")
 
     override def beforeRepair(connection: Connection): Unit =
       logger.info(s"${connection.getCatalog} > repair task starting")
-
-    override def afterInit(connection: Connection): Unit =
-      logger.info(s"${connection.getCatalog} > init task finished")
 
     override def afterRepair(connection: Connection): Unit =
       logger.info(s"${connection.getCatalog} > repair task finished")
@@ -231,5 +238,17 @@ class Flyway(config: FlywayConfig)(implicit ec: ExecutionContext) extends Strict
 
     override def beforeMigrate(connection: Connection): Unit =
       logger.info(s"${connection.getCatalog} > migration task starting")
+
+    override def afterEachUndo(connection: Connection, info: MigrationInfo): Unit =
+      logger.info(s"${connection.getCatalog} > finished undo for ${info.getDescription} - ${info.getVersion}")
+
+    override def beforeEachUndo(connection: Connection, info: MigrationInfo): Unit =
+      logger.info(s"${connection.getCatalog} > starting undo for ${info.getDescription} - ${info.getVersion}")
+
+    override def afterUndo(connection: Connection): Unit =
+      logger.info(s"${connection.getCatalog} > undo task starting")
+
+    override def beforeUndo(connection: Connection): Unit =
+      logger.info(s"${connection.getCatalog} > undo task finished")
   }
 }
